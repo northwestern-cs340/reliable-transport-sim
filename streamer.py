@@ -4,6 +4,7 @@ from lossy_socket import LossyUDP
 from socket import INADDR_ANY
 import struct
 from concurrent.futures import ThreadPoolExecutor
+import time
 
 
 class Streamer:
@@ -27,22 +28,32 @@ class Streamer:
         while not self.closed: # a later hint will explain self.closed
             try:
                 data, addr = self.socket.recvfrom()
-                header = data[:4]
-                body = data[4:]
-                seq = struct.unpack("<i", header)[0]
-                self.buffer[seq] = body
+                header = struct.unpack("<ii", data[:8])
+                body = data[8:]
+                seq = header[0]
+                type = header[1]
+                if type == 1:
+                    self.ack = True
+                else:
+                    self.buffer[seq] = body
+                    newheader = struct.pack("<ii", self.seq, 1)
+                    self.socket.sendto(newheader, (self.dst_ip, self.dst_port))
+
             except Exception as e :
                 print("listener died!")
                 print(e)
 
     def send(self, data_bytes: bytes) -> None:
         """Note that data_bytes can be larger than one packet."""
+        self.ack = False
         # Your code goes here!  The code below should be changed!
-        for start in range(0, len(data_bytes), 1468):
-            header = struct.pack("<i", self.seq)
-            end = min(start + 1468, len(data_bytes))
+        for start in range(0, len(data_bytes), 1464):
+            header = struct.pack("<ii", self.seq, 0)
+            end = min(start + 1464, len(data_bytes))
             self.socket.sendto(header + data_bytes[start:end], (self.dst_ip, self.dst_port))
             self.seq += end - start
+        while not self.ack:
+            time.sleep(0.01)
 
     def recv(self) -> bytes:
         """Blocks (waits) if no data is ready to be read from the connection."""
