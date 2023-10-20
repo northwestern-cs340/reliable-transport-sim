@@ -36,6 +36,7 @@ class Streamer:
                     self.ack = True
                 else:
                     self.buffer[seq] = body
+                    print(self.buffer)
                     newheader = struct.pack("<ii", self.seq, 1)
                     self.socket.sendto(newheader, (self.dst_ip, self.dst_port))
 
@@ -47,13 +48,19 @@ class Streamer:
         """Note that data_bytes can be larger than one packet."""
         self.ack = False
         # Your code goes here!  The code below should be changed!
-        for start in range(0, len(data_bytes), 1464):
-            header = struct.pack("<ii", self.seq, 0)
-            end = min(start + 1464, len(data_bytes))
-            self.socket.sendto(header + data_bytes[start:end], (self.dst_ip, self.dst_port))
-            self.seq += end - start
-        while not self.ack:
-            time.sleep(0.01)
+        initialseq = self.seq
+        while True:
+            self.seq = initialseq
+            for start in range(0, len(data_bytes), 1464):
+                header = struct.pack("<ii", self.seq, 0)
+                end = min(start + 1464, len(data_bytes))
+                self.socket.sendto(header + data_bytes[start:end], (self.dst_ip, self.dst_port))
+                self.seq += end - start
+            for i in range(25):
+                if self.ack:
+                    return
+                time.sleep(0.01)
+        
 
     def recv(self) -> bytes:
         """Blocks (waits) if no data is ready to be read from the connection."""
