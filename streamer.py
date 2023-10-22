@@ -56,7 +56,6 @@ class Streamer:
 
     def send(self, data_bytes: bytes) -> None:
         """Note that data_bytes can be larger than one packet."""
-        self.ack = False
         chunks = [data_bytes[i:i+self.DATA_CHUNK_SIZE] for i in range(0, len(data_bytes), self.DATA_CHUNK_SIZE)]
         # Your code goes here!  The code below should be changed!
         # initialseq = self.seq
@@ -88,13 +87,18 @@ class Streamer:
         """Cleans up. It should block (wait) until the Streamer is done with all
            the necessary ACKs and retransmissions"""
         # your code goes here, especially after you add ACKs and retransmissions.
-        while not self.ack:
-            fin_header=struct.pack("<ii", 0, 2)
-            self.socket.sendto(fin_header, (self.dst_ip, self.dst_port))
+        start_time=time.time()
+
+        while not self.ack and (time.time() - start_time) < self.ACK_TIMEOUT:
+            FIN_HEADER=-1
+            header=struct.pack("<ii", FIN_HEADER, 2)
+            self.socket.sendto(header, (self.dst_ip, self.dst_port))
             time.sleep(self.ACK_TIMEOUT)
-        while not self.fin_received:
+
+        start_time=time.time()
+
+        while not self.fin_received and (time.time() -start_time) < self.FIN_WAIT_TIMEOUT:
             time.sleep(0.01)
-        time.sleep(self.FIN_WAIT_TIMEOUT)
 
         self.closed = True
         self.socket.stoprecv()
