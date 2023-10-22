@@ -10,6 +10,9 @@ import time
 class Streamer:
     ACK_TIMEOUT=0.25
     FIN_WAIT_TIMEOUT=2
+
+    DATA_CHUNK_SIZE=1464
+
     def __init__(self, dst_ip, dst_port,
                  src_ip=INADDR_ANY, src_port=0):
         """Default values listen on all network interfaces, chooses a random source port,
@@ -54,17 +57,18 @@ class Streamer:
     def send(self, data_bytes: bytes) -> None:
         """Note that data_bytes can be larger than one packet."""
         self.ack = False
-        chunks = [data_bytes[i:i+1464] for i in range(0, len(data_bytes), 1464)]
+        chunks = [data_bytes[i:i+self.DATA_CHUNK_SIZE] for i in range(0, len(data_bytes), self.DATA_CHUNK_SIZE)]
         # Your code goes here!  The code below should be changed!
         # initialseq = self.seq
         for chunk in chunks:
+            self.ack=False
             # self.seq = initialseq
             while not self.ack:
                 header = struct.pack("<ii", self.seq, 0)
                 self.socket.sendto(header + chunk, (self.dst_ip, self.dst_port))
                 time.sleep(self.ACK_TIMEOUT)
             self.seq += len(chunk)
-            self.ack=False
+            
 
             
         
