@@ -1,4 +1,3 @@
-# Reliable Streaming Network Transport Simulator
-
-by Steve Tarzia
+Jordan Checkoff, jbc6837
+Josh Brice, 
 
